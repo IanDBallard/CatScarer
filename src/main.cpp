@@ -18,7 +18,8 @@ const int FAN_PWM_PIN = 9; // Using D9 for PWM fan control (must be a PWM pin)
 const int BUZZER_PIN = 3; // Using D3 for buzzer control
 
 // RGB LED Pins (connect via current-limiting resistors)
-// Make sure these are PWM-capable pins for full color control
+// Red and Green pins are PWM-capable for variable brightness
+// Blue pin is digital only (on/off)
 const int LED_RED_PIN   = 5; // Using D5 for Red LED (PWM)
 const int LED_GREEN_PIN = 6; // Using D6 for Green LED (PWM)
 const int LED_BLUE_PIN  = 8; // Using D8 for Blue LED (digital only)
@@ -26,6 +27,13 @@ const int LED_BLUE_PIN  = 8; // Using D8 for Blue LED (digital only)
 // --- Device Behavior Parameters ---
 const unsigned long ACTIVATION_DURATION_MS = 5000; // How long the fan/buzzer stays on (5 seconds)
 const int FAN_SPEED_ACTIVATED = 255; // Fan speed when activated (0-255, 255 is full speed)
+
+// --- State Machine ---
+enum DeviceState {
+    WARMUP,   // PIR sensor is warming up
+    STANDBY,  // Ready for motion detection
+    ACTIVE    // Deterrent is active
+};
 
 // --- Object Instantiation ---
 // Create instances of our component classes
@@ -35,8 +43,15 @@ Buzzer myBuzzer(BUZZER_PIN);
 RGBLED myLED(LED_RED_PIN, LED_GREEN_PIN, LED_BLUE_PIN);
 
 // --- State Variables ---
-bool isActive = false; // True if the deterrent is currently activated
+DeviceState currentState = WARMUP;
 unsigned long activationStartTime = 0; // Stores the millis() when activation started
+unsigned long lastFlicker = 0; // For blue LED flickering during warm-up
+bool ledState = false; // For blue LED flickering during warm-up
+
+// --- Function Declarations ---
+void handleWarmupState();
+void handleStandbyState();
+void handleActiveState();
 
 void setup() {
   // Initialize Serial communication for debugging
@@ -76,55 +91,74 @@ void setup() {
 }
 
 void loop() {
-  // Update buzzer siren state (non-blocking)
+  // Update all component states
+  myPIR.update();
   myBuzzer.update();
   
-  // Check if PIR sensor is still initializing
-  if (myPIR.isInitializing()) {
-    // Flicker blue LED during warm-up
-    static unsigned long lastFlicker = 0;
-    static bool ledState = false;
-    
-    if (millis() - lastFlicker >= 500) { // Flicker every 500ms
-      ledState = !ledState;
-      myLED.setColor(0, 0, ledState ? 255 : 0); // Blue on/off
-      lastFlicker = millis();
-    }
-    return; // Don't process motion detection during warm-up
+  // State machine logic
+  switch (currentState) {
+    case WARMUP:
+      handleWarmupState();
+      break;
+      
+    case STANDBY:
+      handleStandbyState();
+      break;
+      
+    case ACTIVE:
+      handleActiveState();
+      break;
   }
-  
-  // PIR is ready - normal operation
-  if (!isActive) {
-    myLED.setColor(0, 255, 0); // Green = ready
-  }
-  
-  // Check if motion is detected
-  if (myPIR.isMotionDetected()) {
-    if (!isActive) {
-      // Motion detected and device is not currently active: ACTIVATE!
-      Serial.println("Motion detected! Activating deterrent...");
-      Serial.println("Setting LED to RED (255,0,0)");
-      myLED.setColor(255, 0, 0); // Red
-      myFan.turnOn(FAN_SPEED_ACTIVATED);
-      myBuzzer.startSiren(); // Start siren instead of simple turnOn
-      isActive = true; // Set activation flag
-      activationStartTime = millis(); // Record activation start time
-    }
-    // If motion is detected while already active, refresh the timer
-    activationStartTime = millis();
-  }
+}
 
-  // Check if the deterrent needs to be deactivated
-  if (isActive && (millis() - activationStartTime >= ACTIVATION_DURATION_MS)) {
-    // Deterrent was active and the duration has passed, or motion stopped.
+void handleWarmupState() {
+  // Flicker blue LED during warm-up
+  if (millis() - lastFlicker >= 500) { // Flicker every 500ms
+    ledState = !ledState;
+    myLED.setColor(0, 0, ledState ? 255 : 0); // Blue on/off
+    lastFlicker = millis();
+  }
+  
+  // Check if warm-up is complete
+  if (!myPIR.isInitializing()) {
+    currentState = STANDBY;
+    Serial.println("Warm-up complete. Entering standby mode.");
+  }
+}
+
+void handleStandbyState() {
+  // Show green LED to indicate ready state
+  myLED.setColor(0, 255, 0); // Green = ready
+  
+  // Check for motion detection
+  if (myPIR.isMotionDetected()) {
+    // Transition to active state
+    currentState = ACTIVE;
+    activationStartTime = millis();
+    
+    Serial.println("Motion detected! Activating deterrent...");
+    Serial.println("Setting LED to RED (255,0,0)");
+    myLED.setColor(255, 0, 0); // Red
+    myFan.turnOn(FAN_SPEED_ACTIVATED);
+    myBuzzer.startSiren();
+  }
+}
+
+void handleActiveState() {
+  // Check if motion is still detected (refresh timer)
+  if (myPIR.isMotionDetected()) {
+    activationStartTime = millis(); // Refresh the timer
+  }
+  
+  // Check if activation duration has expired
+  if (millis() - activationStartTime >= ACTIVATION_DURATION_MS) {
+    // Transition back to standby
+    currentState = STANDBY;
+    
     Serial.println("Deactivating deterrent...");
     Serial.println("Setting LED to GREEN (0,255,0)");
     myLED.setColor(0, 255, 0); // Green
     myFan.turnOff();
-    myBuzzer.stopSiren(); // Stop siren instead of simple turnOff
-    isActive = false; // Reset activation flag
+    myBuzzer.stopSiren();
   }
-
-  // Small delay to prevent continuous reading and reduce CPU load
-  delay(50);
 }

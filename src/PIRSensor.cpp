@@ -12,6 +12,14 @@ void PIRSensor::begin() {
     _isInitialized = false; // Mark as not yet initialized
 }
 
+// update() method implementation
+void PIRSensor::update() {
+    // Check if warm-up period is complete
+    if (!_isInitialized && (millis() - _warmUpStartTime >= _warmUpDuration)) {
+        _isInitialized = true; // Mark as initialized
+    }
+}
+
 // isMotionDetected() method implementation
 bool PIRSensor::isMotionDetected() {
     // Don't detect motion during warm-up period
@@ -26,10 +34,5 @@ bool PIRSensor::isMotionDetected() {
 
 // isInitializing() method implementation
 bool PIRSensor::isInitializing() {
-    // Check if warm-up period is complete
-    if (!_isInitialized && (millis() - _warmUpStartTime >= _warmUpDuration)) {
-        _isInitialized = true; // Mark as initialized
-    }
-    
     return !_isInitialized; // Return true if still initializing
 }

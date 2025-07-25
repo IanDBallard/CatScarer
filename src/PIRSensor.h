@@ -11,6 +11,9 @@ public:
     // Initializes the sensor pin as an input and starts warm-up timer.
     void begin();
 
+    // Updates the sensor state (should be called in main loop).
+    void update();
+
     // Checks if motion is currently detected.
     bool isMotionDetected();
     

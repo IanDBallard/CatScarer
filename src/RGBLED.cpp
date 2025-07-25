@@ -16,14 +16,17 @@ void RGBLED::begin() {
 
 // setColor() method implementation
 void RGBLED::setColor(int r, int g, int b) {
-    // Simple on/off control using digitalWrite
-    // For common cathode: HIGH = on, LOW = off
-    // For common anode: HIGH = off, LOW = on
+    // Constrain values to valid PWM range (0-255)
+    r = constrain(r, 0, 255);
+    g = constrain(g, 0, 255);
+    b = constrain(b, 0, 255);
     
-    // Using common cathode logic (HIGH = on, LOW = off)
-    digitalWrite(_redPin, r > 0 ? HIGH : LOW);   // HIGH = on, LOW = off
-    digitalWrite(_greenPin, g > 0 ? HIGH : LOW); // HIGH = on, LOW = off  
-    digitalWrite(_bluePin, b > 0 ? HIGH : LOW);  // HIGH = on, LOW = off
+    // Use PWM for red and green channels (PWM-capable pins)
+    analogWrite(_redPin, r);
+    analogWrite(_greenPin, g);
+    
+    // Use digital control for blue channel (non-PWM pin D8)
+    digitalWrite(_bluePin, b > 0 ? HIGH : LOW);
 }
 
 // turnOff() method implementation

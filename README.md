@@ -217,9 +217,9 @@ RGB LED (5V via resistors)
 | PIR Sensor | D2 | Motion detection input |
 | Fan PWM | D9 | PWM fan speed control |
 | Buzzer | D3 | Audio output control |
-| RGB LED Red | D5 | Red LED control (PWM) |
-| RGB LED Green | D6 | Green LED control (PWM) |
-| RGB LED Blue | D8 | Blue LED control (Digital) |
+| RGB LED Red | D5 | Red LED control (PWM - variable brightness) |
+| RGB LED Green | D6 | Green LED control (PWM - variable brightness) |
+| RGB LED Blue | D8 | Blue LED control (Digital - on/off only) |
 
 ## Features
 
@@ -246,6 +246,20 @@ RGB LED (5V via resistors)
 - **Duration**: Configurable activation time (default: 5 seconds)
 - **Auto-reset**: Returns to standby after activation period
 - **Continuous monitoring**: Refreshes timer if motion continues
+
+### State Logic
+
+The device operates using a state machine with three distinct states:
+
+```
+WARMUP → STANDBY → ACTIVE
+   ↑                    ↓
+   └────────────────────┘
+```
+
+- **WARMUP**: PIR sensor initializing (45 seconds), blue LED flickers
+- **STANDBY**: Ready for motion detection, green LED solid
+- **ACTIVE**: Deterrent active, red LED solid, fan and buzzer running
 
 ## Setup
 
@@ -332,6 +346,13 @@ Edit `src/main.cpp` to customize:
 // Device behavior parameters
 const unsigned long ACTIVATION_DURATION_MS = 5000; // Activation duration in milliseconds
 const int FAN_SPEED_ACTIVATED = 255; // Fan speed when activated (0-255)
+
+// State machine enum (for reference)
+enum DeviceState {
+    WARMUP,   // PIR sensor is warming up
+    STANDBY,  // Ready for motion detection
+    ACTIVE    // Deterrent is active
+};
 ```
 
 ### PIR Sensor Configuration
@@ -341,6 +362,9 @@ Edit `src/PIRSensor.cpp` to customize warm-up time:
 ```cpp
 // In constructor - change warm-up duration (default: 45 seconds)
 _warmUpDuration(45000) // 45 seconds in milliseconds
+
+// The PIRSensor class now includes an update() method that should be called
+// in the main loop() for proper state management
 ```
 
 ### Pin Assignments
@@ -351,9 +375,9 @@ Modify pin definitions in `src/main.cpp`:
 const int PIR_PIN = 2;        // PIR sensor pin
 const int FAN_PWM_PIN = 9;    // Fan PWM control pin
 const int BUZZER_PIN = 3;     // Buzzer control pin
-const int LED_RED_PIN = 5;    // RGB LED red pin
-const int LED_GREEN_PIN = 6;  // RGB LED green pin
-const int LED_BLUE_PIN = 8;   // RGB LED blue pin
+const int LED_RED_PIN = 5;    // RGB LED red pin (PWM)
+const int LED_GREEN_PIN = 6;  // RGB LED green pin (PWM)
+const int LED_BLUE_PIN = 8;   // RGB LED blue pin (Digital only)
 ```
 
 ## Hardware Circuit
@@ -403,9 +427,9 @@ Arduino D3 ──┬── 1kΩ Resistor ── 2N2222 Base
 ### RGB LED Circuit (Common Cathode)
 
 ```
-Arduino D5 ── 220Ω Resistor ── LED Red Anode
-Arduino D6 ── 220Ω Resistor ── LED Green Anode  
-Arduino D8 ── 220Ω Resistor ── LED Blue Anode
+Arduino D5 ── 220Ω Resistor ── LED Red Anode (PWM - variable brightness)
+Arduino D6 ── 220Ω Resistor ── LED Green Anode (PWM - variable brightness)
+Arduino D8 ── 220Ω Resistor ── LED Blue Anode (Digital - on/off only)
                     │
                 LED Common Cathode ── GND
 ```
@@ -414,6 +438,8 @@ Arduino D8 ── 220Ω Resistor ── LED Blue Anode
 - **220Ω Resistors**: Current-limiting resistors (220Ω-330Ω acceptable)
 - **RGB LED**: Common cathode type (longest pin = cathode)
 - **Pin Configuration**: Red, Green, Blue anodes + Common cathode
+- **PWM Control**: Red and Green channels support variable brightness (0-255)
+- **Digital Control**: Blue channel is on/off only due to non-PWM pin limitation
 
 ### Complete Wiring Diagram
 
@@ -497,10 +523,10 @@ pio lib install "library_name"
 
 The project uses object-oriented design with encapsulated classes:
 
-- `PIRSensor`: Motion detection interface with built-in warm-up logic
+- `PIRSensor`: Motion detection interface with built-in warm-up logic and state management
 - `PWMFan`: Fan speed control
 - `Buzzer`: Audio output control with siren mode
-- `RGBLED`: Color LED control
+- `RGBLED`: Color LED control with PWM support for red/green channels
 
 ### Project Configuration
 
@@ -546,6 +572,7 @@ Testing BLUE pin (D8)...
 ALL LEDS OFF
 PIR sensor warming up...
 Device ready.
+Warm-up complete. Entering standby mode.
 Motion detected! Activating deterrent...
 Setting LED to RED (255,0,0)
 Deactivating deterrent...
@@ -562,4 +589,13 @@ Setting LED to GREEN (0,255,0)
 
 ## License
 
-[Add your license here] 
+This project is licensed under the GNU General Public License v3.0 - see the [LICENSE](LICENSE) file for details.
+
+### License Summary
+
+- **License**: GNU General Public License v3.0
+- **Permissions**: Commercial use, modification, distribution, patent use, private use
+- **Conditions**: License and copyright notice must be included, state changes must be disclosed, source code must be made available
+- **Limitations**: No warranty, no liability
+
+For more information about the GPL v3 license, visit: https://www.gnu.org/licenses/gpl-3.0.html 
