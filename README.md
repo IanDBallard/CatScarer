@@ -146,6 +146,7 @@ The 3D models can be modified for:
 | **RGB LED** | Common Cathode | 1 | Status indicator |
 | **PWM Fan** | 12V, 80-120mm | 1 | Physical deterrent |
 | **Piezo Buzzer** | 5V or 12V | 1 | Audio deterrent |
+| **IR Receiver** | TSOP1838 | 1 | Remote control input |
 
 #### **Connectors & Hardware**
 | Component | Specification | Quantity | Purpose |
@@ -220,6 +221,7 @@ RGB LED (5V via resistors)
 | RGB LED Red | D5 | Red LED control (PWM - variable brightness) |
 | RGB LED Green | D6 | Green LED control (PWM - variable brightness) |
 | RGB LED Blue | D8 | Blue LED control (Digital - on/off only) |
+| IR Receiver | D4 | TSOP1838 IR receiver for remote control |
 
 ## Features
 
@@ -238,6 +240,7 @@ RGB LED (5V via resistors)
   - **Blue flickering**: PIR sensor warming up
   - **Green solid**: Ready/Standby mode
   - **Red solid**: Active deterrent mode
+  - **Yellow solid**: Inactive mode (device disabled)
 
 ### Behavior
 
@@ -246,20 +249,38 @@ RGB LED (5V via resistors)
 - **Duration**: Configurable activation time (default: 5 seconds)
 - **Auto-reset**: Returns to standby after activation period
 - **Continuous monitoring**: Refreshes timer if motion continues
+- **Remote Control**: IR remote power toggle to enter/exit inactive mode
+- **Inactive Mode**: Device ignores PIR input when disabled via remote
+
+### Remote Control Operation
+
+The device supports IR remote control using a TSOP1838 receiver and Elegoo-compatible remote:
+
+- **Power Toggle**: Press power button to toggle between active and inactive modes
+- **State Transitions**: Power toggle works from any state (WARMUP, STANDBY, ACTIVE)
+- **Inactive Mode**: When inactive, device ignores all PIR motion detection
+- **Visual Feedback**: Yellow LED indicates inactive state
+- **Testing**: Send 'P' via serial monitor to simulate power toggle during development
 
 ### State Logic
 
-The device operates using a state machine with three distinct states:
+The device operates using a state machine with four distinct states:
 
 ```
 WARMUP → STANDBY → ACTIVE
-   ↑                    ↓
-   └────────────────────┘
+   ↑         ↑         ↑
+   └─────────┴─────────┘
+        Power Toggle
+           ↓
+        INACTIVE
+           ↑
+        Power Toggle
 ```
 
 - **WARMUP**: PIR sensor initializing (45 seconds), blue LED flickers
 - **STANDBY**: Ready for motion detection, green LED solid
 - **ACTIVE**: Deterrent active, red LED solid, fan and buzzer running
+- **INACTIVE**: Device disabled, yellow LED solid, ignores PIR input
 
 ## Setup
 
@@ -430,6 +451,9 @@ Arduino D3 ──┬── 1kΩ Resistor ── 2N2222 Base
 Arduino D5 ── 220Ω Resistor ── LED Red Anode (PWM - variable brightness)
 Arduino D6 ── 220Ω Resistor ── LED Green Anode (PWM - variable brightness)
 Arduino D8 ── 220Ω Resistor ── LED Blue Anode (Digital - on/off only)
+Arduino D4 ── TSOP1838 IR Receiver (Signal)
+TSOP1838 VCC ── 5V
+TSOP1838 GND ── GND
                     │
                 LED Common Cathode ── GND
 ```

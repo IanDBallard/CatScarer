@@ -5,6 +5,7 @@
 #include "PWMFan.h"
 #include "Buzzer.h"
 #include "RGBLED.h"
+#include "IRRemote.h"
 
 // --- Pin Definitions ---
 // Connect PIR Sensor OUT pin to this digital input pin
@@ -24,15 +25,19 @@ const int LED_RED_PIN   = 5; // Using D5 for Red LED (PWM)
 const int LED_GREEN_PIN = 6; // Using D6 for Green LED (PWM)
 const int LED_BLUE_PIN  = 8; // Using D8 for Blue LED (digital only)
 
+// IR Receiver Pin (TSOP1838)
+const int IR_RECEIVER_PIN = 4; // Using D4 for IR receiver
+
 // --- Device Behavior Parameters ---
 const unsigned long ACTIVATION_DURATION_MS = 5000; // How long the fan/buzzer stays on (5 seconds)
 const int FAN_SPEED_ACTIVATED = 255; // Fan speed when activated (0-255, 255 is full speed)
 
 // --- State Machine ---
 enum DeviceState {
-    WARMUP,   // PIR sensor is warming up
-    STANDBY,  // Ready for motion detection
-    ACTIVE    // Deterrent is active
+    WARMUP,    // PIR sensor is warming up
+    STANDBY,   // Ready for motion detection
+    ACTIVE,    // Deterrent is active
+    INACTIVE   // Device disabled, ignoring PIR input
 };
 
 // --- Object Instantiation ---
@@ -41,6 +46,7 @@ PIRSensor myPIR(PIR_PIN);
 PWMFan myFan(FAN_PWM_PIN);
 Buzzer myBuzzer(BUZZER_PIN);
 RGBLED myLED(LED_RED_PIN, LED_GREEN_PIN, LED_BLUE_PIN);
+IRRemote myIRRemote(IR_RECEIVER_PIN);
 
 // --- State Variables ---
 DeviceState currentState = WARMUP;
@@ -52,6 +58,8 @@ bool ledState = false; // For blue LED flickering during warm-up
 void handleWarmupState();
 void handleStandbyState();
 void handleActiveState();
+void handleInactiveState();
+bool checkIRPowerToggle();
 
 void setup() {
   // Initialize Serial communication for debugging
@@ -63,6 +71,7 @@ void setup() {
   myFan.begin();
   myBuzzer.begin();
   myLED.begin();
+  myIRRemote.begin();
 
   // LED Test - cycle through colors
   Serial.println("Testing LED colors...");
@@ -94,6 +103,7 @@ void loop() {
   // Update all component states
   myPIR.update();
   myBuzzer.update();
+  myIRRemote.update();
   
   // State machine logic
   switch (currentState) {
@@ -108,10 +118,21 @@ void loop() {
     case ACTIVE:
       handleActiveState();
       break;
+      
+    case INACTIVE:
+      handleInactiveState();
+      break;
   }
 }
 
 void handleWarmupState() {
+  // Check for IR power toggle (can interrupt warm-up)
+  if (checkIRPowerToggle()) {
+    currentState = INACTIVE;
+    Serial.println("IR Power toggle: Entering inactive mode.");
+    return;
+  }
+  
   // Flicker blue LED during warm-up
   if (millis() - lastFlicker >= 500) { // Flicker every 500ms
     ledState = !ledState;
@@ -127,6 +148,13 @@ void handleWarmupState() {
 }
 
 void handleStandbyState() {
+  // Check for IR power toggle
+  if (checkIRPowerToggle()) {
+    currentState = INACTIVE;
+    Serial.println("IR Power toggle: Entering inactive mode.");
+    return;
+  }
+  
   // Show green LED to indicate ready state
   myLED.setColor(0, 255, 0); // Green = ready
   
@@ -145,6 +173,16 @@ void handleStandbyState() {
 }
 
 void handleActiveState() {
+  // Check for IR power toggle (can interrupt active state)
+  if (checkIRPowerToggle()) {
+    currentState = INACTIVE;
+    Serial.println("IR Power toggle: Entering inactive mode.");
+    // Stop deterrent immediately
+    myFan.turnOff();
+    myBuzzer.stopSiren();
+    return;
+  }
+  
   // Check if motion is still detected (refresh timer)
   if (myPIR.isMotionDetected()) {
     activationStartTime = millis(); // Refresh the timer
@@ -161,4 +199,27 @@ void handleActiveState() {
     myFan.turnOff();
     myBuzzer.stopSiren();
   }
+}
+
+void handleInactiveState() {
+  // Check for IR power toggle to exit inactive state
+  if (checkIRPowerToggle()) {
+    currentState = STANDBY;
+    Serial.println("IR Power toggle: Exiting inactive mode, entering standby.");
+    return;
+  }
+  
+  // Show yellow LED to indicate inactive state (red + green)
+  myLED.setColor(255, 255, 0); // Yellow = inactive
+  
+  // In inactive state, ignore all PIR motion detection
+  // No deterrent activation occurs
+}
+
+bool checkIRPowerToggle() {
+  if (myIRRemote.isPowerTogglePressed()) {
+    myIRRemote.clearPowerToggle();
+    return true;
+  }
+  return false;
 }
