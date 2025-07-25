@@ -1,36 +1,44 @@
 #include "IRRemote.h"
+#include <IRremote.hpp>
 
 // Constructor implementation
 IRRemote::IRRemote(int pin) {
     irPin = pin;
     powerTogglePressed = false;
     lastDebounceTime = 0;
-    powerCodeDetected = true; // For testing, assume power code is always detected
 }
 
 // begin() method implementation
 void IRRemote::begin() {
-    pinMode(irPin, INPUT_PULLUP); // Set as input with pull-up for button testing
+    // Initialize the IR receiver using the correct API
+    IrReceiver.begin(irPin);
     Serial.println("IR Receiver initialized on pin " + String(irPin));
     Serial.println("For testing: Send 'P' via serial to simulate power toggle");
 }
 
 // update() method implementation
 void IRRemote::update() {
-    // Check for serial command to simulate power toggle
+    // Check for IR input using the correct API
+    if (IrReceiver.decode()) {
+        if (IrReceiver.decodedIRData.protocol == NEC || IrReceiver.decodedIRData.protocol == UNKNOWN) {
+            // Check if this is the power command
+            if (IrReceiver.decodedIRData.command == POWER_COMMAND) {
+                unsigned long currentTime = millis();
+                if (currentTime - lastDebounceTime >= DEBOUNCE_DELAY) {
+                    powerTogglePressed = true;
+                    Serial.println("Power toggle received via IR!");
+                    lastDebounceTime = currentTime;
+                }
+            }
+        }
+        IrReceiver.resume(); // Receive the next value
+    }
+    
+    // Check for serial command to simulate power toggle (for testing)
     if (Serial.available()) {
         char command = Serial.read();
         if (command == 'P' || command == 'p') {
             simulatePowerToggle();
-        }
-    }
-    
-    // Check for button press on IR pin (for hardware testing)
-    if (digitalRead(irPin) == LOW) {
-        unsigned long currentTime = millis();
-        if (currentTime - lastDebounceTime >= DEBOUNCE_DELAY) {
-            simulatePowerToggle();
-            lastDebounceTime = currentTime;
         }
     }
 }
@@ -49,9 +57,4 @@ void IRRemote::clearPowerToggle() {
 void IRRemote::simulatePowerToggle() {
     powerTogglePressed = true;
     Serial.println("Power toggle simulated!");
-}
-
-// isPowerCodeDetected() method implementation
-bool IRRemote::isPowerCodeDetected() {
-    return powerCodeDetected;
 } 

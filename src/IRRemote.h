@@ -10,8 +10,8 @@ private:
     unsigned long lastDebounceTime;
     static const unsigned long DEBOUNCE_DELAY = 200; // 200ms debounce
     
-    // For testing purposes, we'll simulate IR input with a button or serial command
-    bool powerCodeDetected;
+    // IR codes for Elegoo remote (adjust as needed)
+    const unsigned int POWER_COMMAND = 0x45; // Example power button code
     
 public:
     // Constructor
@@ -31,9 +31,6 @@ public:
     
     // For testing - simulate power toggle via serial command
     void simulatePowerToggle();
-    
-    // Checks if power code has been detected
-    bool isPowerCodeDetected();
 };
 
 #endif // IRREMOTE_H 
