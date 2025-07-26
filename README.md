@@ -135,7 +135,8 @@ The 3D models can be modified for:
 |-------|-------|----------|---------|
 | **220Ω** | 1/4W | 3 | RGB LED current limiting |
 | **330Ω** | 1/4W | 3 | RGB LED current limiting (alt) |
-| **1kΩ** | 1/4W | 1 | Buzzer base current limiting |
+| **1kΩ** | 1/4W | 1 | Speaker base current limiting |
+| **22Ω** | 1W+ | 1 | Speaker series resistor (5V operation) |
 | **10kΩ** | 1/4W | 1 | MOSFET gate pull-down |
 | **4.7kΩ** | 1/4W | 1 | MOSFET gate pull-down (alt) |
 
@@ -144,8 +145,8 @@ The 3D models can be modified for:
 |-----------|---------------|----------|-------|
 | **PIR Sensor** | HC-SR501 | 1 | Motion detection |
 | **RGB LED** | Common Cathode | 1 | Status indicator |
-| **PWM Fan** | 12V, 80-120mm | 1 | Physical deterrent |
-| **Piezo Buzzer** | 5V or 12V | 1 | Audio deterrent |
+| **PWM Fan** | 12V, 120mm 4-pin PWM | 1 | Physical deterrent |
+| **Passive Speaker** | 8Ω, 0.2W | 1 | Audio deterrent (requires 22Ω series resistor) |
 | **IR Receiver** | TSOP1838 | 1 | Remote control input |
 
 #### **Connectors & Hardware**
@@ -188,7 +189,7 @@ The 3D models can be modified for:
 
 #### **Buck Converter Selection**
 - **Input**: 12V from power supply
-- **Output**: 5V for Arduino and sensors
+- **Output**: 5V for Arduino, PIR Sensor, RGB LED, and Speaker (via series resistor)
 - **Current**: 1A minimum (Arduino + sensors)
 - **Efficiency**: 85%+ for heat management
 - **Popular Modules**: LM2596, MP2307, XL6009
@@ -196,15 +197,21 @@ The 3D models can be modified for:
 #### **Power Distribution**
 ```
 12V Power Supply
-    ↓
-Buck Converter (12V→5V)
-    ↓
-Arduino Nano (5V)
-    ↓
-PIR Sensor (5V)
-    ↓
-RGB LED (5V via resistors)
+    ├── Buck Converter (12V→5V)
+    │   ├── Arduino Nano (5V)
+    │   ├── PIR Sensor (5V)
+    │   ├── IR Receiver (5V)
+    │   ├── RGB LED (5V via 220Ω resistors)
+    │   └── Speaker (5V via 22Ω series resistor)
+    │
+    └── Fan (12V via P30N06LE MOSFET)
 ```
+
+**Power Requirements:**
+- **Fan**: 12V directly from power supply
+- **Speaker**: 5V from buck converter (via 22Ω series resistor)
+- **Arduino & Sensors**: 5V from buck converter
+- **RGB LED**: 5V from buck converter (via current-limiting resistors)
 
 #### **Alternative Power Solutions**
 - **USB Power**: 5V directly (fan needs separate 12V)
@@ -216,12 +223,104 @@ RGB LED (5V via resistors)
 | Component | Pin | Description |
 |-----------|-----|-------------|
 | PIR Sensor | D2 | Motion detection input |
-| Fan PWM | D9 | PWM fan speed control |
-| Buzzer | D3 | Audio output control |
+| Fan PWM | D9 | PWM fan speed control (via P30N06LE MOSFET) |
+| Speaker | D3 | Audio output control (via 2N2222 transistor) |
 | RGB LED Red | D5 | Red LED control (PWM - variable brightness) |
 | RGB LED Green | D6 | Green LED control (PWM - variable brightness) |
 | RGB LED Blue | D8 | Blue LED control (Digital - on/off only) |
 | IR Receiver | D4 | TSOP1838 IR receiver for remote control |
+
+## Hardware Circuit Diagrams
+
+### Power Distribution
+
+```
+12V Power Supply (+) ── Buck Converter Input (+)
+12V Power Supply (-) ── Buck Converter Input (-) ── GND
+Buck Converter Output (+) ── Arduino 5V Pin
+Buck Converter Output (-) ── Arduino GND Pin ── GND
+```
+
+### Fan Control Circuit (P30N06LE MOSFET)
+
+```
+12V Power Supply (+) ── Fan (Pin 2: +12V Power, Yellow/Red wire)
+Fan (Pin 1: Ground, Black wire) ── P30N06LE Drain (Pin 2)
+P30N06LE Source (Pin 3) ── GND
+Arduino D9 ── P30N06LE Gate (Pin 1) ── 10kΩ Resistor ── GND
+                                            (Pull-down resistor for gate)
+Flyback Diode (1N4007) across Fan: Cathode to Fan(+), Anode to Fan(-)
+```
+
+**Fan Wire Colors (4-pin PWM):**
+- **Black**: Ground (Pin 1)
+- **Yellow/Red**: +12V Power (Pin 2)
+- **Blue**: PWM Control (Pin 3) - Not used in this circuit
+- **Green/Yellow**: Sense (Pin 4) - Not used in this circuit
+
+### Speaker Circuit (2N2222 Transistor)
+
+```
+Buck Converter 5V Output (+) ── 22Ω Series Resistor (1W+) ── Speaker (+)
+Speaker (-) ── 2N2222 Collector
+2N2222 Emitter ── GND
+Arduino D3 ── 1kΩ Resistor ── 2N2222 Base
+Flyback Diode (1N4007) across Speaker: Cathode to Speaker(+), Anode to Speaker(-)
+```
+
+**Important Notes:**
+- **5V Power**: Supplied by buck converter, not direct Arduino 5V
+- **Series Resistor**: 22Ω, 1W+ required to limit current for 8Ω speaker
+- **Transistor**: 2N2222 switches speaker to ground when Arduino pin is HIGH
+
+### RGB LED Circuit
+
+```
+Buck Converter 5V Output (+) ── 220Ω Resistor ── RGB LED Red Anode
+Buck Converter 5V Output (+) ── 220Ω Resistor ── RGB LED Green Anode
+Buck Converter 5V Output (+) ── 220Ω Resistor ── RGB LED Blue Anode
+RGB LED Common Cathode ── GND
+Arduino D5 ── RGB LED Red Anode (via 220Ω resistor)
+Arduino D6 ── RGB LED Green Anode (via 220Ω resistor)
+Arduino D8 ── RGB LED Blue Anode (via 220Ω resistor)
+```
+
+### PIR Sensor Circuit
+
+```
+Buck Converter 5V Output (+) ── PIR Sensor VCC
+PIR Sensor GND ── GND
+PIR Sensor OUT ── Arduino D2
+```
+
+### IR Receiver Circuit
+
+```
+Buck Converter 5V Output (+) ── IR Receiver VCC
+IR Receiver GND ── GND
+IR Receiver OUT ── Arduino D4
+```
+
+### Complete Wiring Diagram
+
+```
+12V Power Supply
+    │
+    ├── Buck Converter (12V→5V)
+    │   ├── Arduino Nano (5V, GND)
+    │   ├── PIR Sensor (5V, GND, D2)
+    │   ├── IR Receiver (5V, GND, D4)
+    │   ├── RGB LED (5V via 220Ω resistors, D5/D6/D8)
+    │   └── Speaker Circuit (5V via 22Ω resistor, D3)
+    │
+    └── Fan Circuit (12V, D9)
+        └── P30N06LE MOSFET (D9 → Gate, Fan → Drain, Source → GND)
+```
+
+**Ground Connections:**
+- All GND connections must be connected to a single common ground rail
+- Buck converter output GND connects to Arduino GND
+- All component GND connections connect to this common ground
 
 ## Features
 
