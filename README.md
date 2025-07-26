@@ -49,6 +49,7 @@ The project includes 3D printable enclosure parts for a complete, professional-l
 ### Printing Specifications
 
 #### Recommended Settings:
+
 - Printer: Any FDM 3D printer (tested on Bambu Lab X1C)
 - Material: PLA+ (recommended) or standard PLA
 - Layer Height: 0.2mm (standard quality)
@@ -58,6 +59,7 @@ The project includes 3D printable enclosure parts for a complete, professional-l
 - Hotend Temperature: 210-220°C (PLA+)
 
 #### Alternative Materials:
+
 - PETG: More durable, higher temperature resistance
 - ABS: Higher temperature resistance, requires enclosure
 - TPU: Flexible, impact resistant (for outdoor use)
@@ -82,6 +84,7 @@ The project includes 3D printable enclosure parts for a complete, professional-l
 ### Customization
 
 The 3D models can be modified for:
+
 - Different fan sizes - Adjust cavity dimensions
 - Additional sensors - Add mounting points
 - Different mounting - Modify base or mounting holes
@@ -101,6 +104,7 @@ The 3D models can be modified for:
 ### Complete Component List
 
 #### Microcontrollers (Choose One)
+
 | MCU | Package | Voltage | Flash | RAM | Notes |
 |-----|---------|---------|-------|-----|-------|
 | Arduino Nano | DIP-28 | 5V | 32KB | 2KB | Primary Target |
@@ -111,6 +115,7 @@ The 3D models can be modified for:
 | STM32F103C8T6 | SMD | 3.3V | 64KB | 20KB | ARM Cortex-M3 |
 
 #### Power Supply Components
+
 | Component | Specification | Quantity | Notes |
 |-----------|---------------|----------|-------|
 | 12V Power Supply | 12V, 2A+ | 1 | For fan and buzzer |
@@ -120,6 +125,7 @@ The 3D models can be modified for:
 | Capacitors | 10µF, 16V | 2 | Decoupling |
 
 #### Transistors & MOSFETs
+
 | Component | Package | Rating | Quantity | Purpose |
 |-----------|---------|--------|----------|---------|
 | P30N06LE | TO-220 | 30A, 60V | 1 | Fan control |
@@ -128,6 +134,7 @@ The 3D models can be modified for:
 | IRF530 | TO-220 | 14A, 100V | 1 | Fan control (alt) |
 
 #### Diodes
+
 | Component | Package | Rating | Quantity | Purpose |
 |-----------|---------|--------|----------|---------|
 | 1N4007 | DO-41 | 1A, 1000V | 2 | Flyback protection |
@@ -135,6 +142,7 @@ The 3D models can be modified for:
 | 1N4001 | DO-41 | 1A, 50V | 2 | Flyback protection (alt) |
 
 #### Resistors
+
 | Value | Power | Quantity | Purpose |
 |-------|-------|----------|---------|
 | 220Ω | 1/4W | 3 | RGB LED current limiting |
@@ -145,6 +153,7 @@ The 3D models can be modified for:
 | 4.7kΩ | 1/4W | 1 | MOSFET gate pull-down (alt) |
 
 #### Sensors & Actuators
+
 | Component | Specification | Quantity | Notes |
 |-----------|---------------|----------|-------|
 | PIR Sensor | HC-SR501 | 1 | Motion detection |
@@ -154,6 +163,7 @@ The 3D models can be modified for:
 | IR Receiver | TSOP1838 | 1 | Remote control input |
 
 #### Connectors & Hardware
+
 | Component | Specification | Quantity | Purpose |
 |-----------|---------------|----------|---------|
 | Breadboard | 830 points | 1 | Prototyping |
@@ -165,12 +175,14 @@ The 3D models can be modified for:
 ### MCU Compatibility Notes
 
 #### Arduino Nano (Primary)
+
 - Voltage: 5V operation
 - PWM Pins: 3, 5, 6, 9, 10, 11
 - Digital Pins: All pins available
 - Memory: Sufficient for all features
 
 #### ESP32/ESP8266 Compatibility
+
 - Voltage: 3.3V operation (requires level shifting)
 - PWM: Software PWM on any pin
 - WiFi: Built-in connectivity for remote monitoring
@@ -178,6 +190,7 @@ The 3D models can be modified for:
 - Pin Changes: Update pin definitions in `src/main.cpp`
 
 #### STM32 Compatibility
+
 - Voltage: 3.3V operation
 - PWM: Hardware PWM on specific pins
 - Performance: Higher clock speed, more memory
@@ -186,12 +199,14 @@ The 3D models can be modified for:
 ### Power Supply Considerations
 
 #### 12V Power Supply Requirements
+
 - Minimum Current: 2A for reliable operation
 - Recommended: 3A for headroom
 - Voltage Stability: ±5% tolerance
 - Protection: Overcurrent and short-circuit protection
 
 #### Buck Converter Selection
+
 - Input: 12V from power supply
 - Output: 5V for Arduino, PIR Sensor, RGB LED, and Speaker (via series resistor)
 - Current: 1A minimum (Arduino + sensors)
@@ -199,7 +214,8 @@ The 3D models can be modified for:
 - Popular Modules: LM2596, MP2307, XL6009
 
 #### Power Distribution
-```
+
+```text
 12V Power Supply
     ├── Buck Converter (12V→5V)
     │   ├── Arduino Nano (5V)
@@ -212,12 +228,14 @@ The 3D models can be modified for:
 ```
 
 Power Requirements:
+
 - Fan: 12V directly from power supply
 - Speaker: 5V from buck converter (via 22Ω series resistor)
 - Arduino & Sensors: 5V from buck converter
 - RGB LED: 5V from buck converter (via current-limiting resistors)
 
 #### Alternative Power Solutions
+
 - USB Power: 5V directly (fan needs separate 12V)
 - Battery: 12V lead-acid or LiPo with buck converter
 - Solar: 12V solar panel with charge controller
@@ -236,9 +254,9 @@ Power Requirements:
 
 ## Hardware Circuit Diagrams
 
-### Power Distribution
+### Power Distribution Circuit
 
-```
+```text
 12V Power Supply (+) ── Buck Converter Input (+)
 12V Power Supply (-) ── Buck Converter Input (-) ── GND
 Buck Converter Output (+) ── Arduino 5V Pin
@@ -247,7 +265,7 @@ Buck Converter Output (-) ── Arduino GND Pin ── GND
 
 ### Fan Control Circuit (P30N06LE MOSFET)
 
-```
+```text
 12V Power Supply (+) ── Fan (Pin 2: +12V Power, Yellow/Red wire)
 Fan (Pin 1: Ground, Black wire) ── P30N06LE Drain (Pin 2)
 P30N06LE Source (Pin 3) ── GND
@@ -257,6 +275,7 @@ Flyback Diode (1N4007) across Fan: Cathode to Fan(+), Anode to Fan(-)
 ```
 
 Fan Wire Colors (4-pin PWM):
+
 - Black: Ground (Pin 1)
 - Yellow/Red: +12V Power (Pin 2)
 - Blue: PWM Control (Pin 3) - Not used in this circuit
@@ -264,7 +283,7 @@ Fan Wire Colors (4-pin PWM):
 
 ### Speaker Circuit (2N2222 Transistor)
 
-```
+```text
 Buck Converter 5V Output (+) ── 22Ω Series Resistor (1W+) ── Speaker (+)
 Speaker (-) ── 2N2222 Collector
 2N2222 Emitter ── GND
@@ -273,13 +292,14 @@ Flyback Diode (1N4007) across Speaker: Cathode to Speaker(+), Anode to Speaker(-
 ```
 
 Important Notes:
+
 - 5V Power: Supplied by buck converter, not direct Arduino 5V
 - Series Resistor: 22Ω, 1W+ required to limit current for 8Ω speaker
 - Transistor: 2N2222 switches speaker to ground when Arduino pin is HIGH
 
 ### RGB LED Circuit
 
-```
+```text
 Buck Converter 5V Output (+) ── 220Ω Resistor ── RGB LED Red Anode
 Buck Converter 5V Output (+) ── 220Ω Resistor ── RGB LED Green Anode
 Buck Converter 5V Output (+) ── 220Ω Resistor ── RGB LED Blue Anode
@@ -291,7 +311,7 @@ Arduino D8 ── RGB LED Blue Anode (via 220Ω resistor)
 
 ### PIR Sensor Circuit
 
-```
+```text
 Buck Converter 5V Output (+) ── PIR Sensor VCC
 PIR Sensor GND ── GND
 PIR Sensor OUT ── Arduino D2
@@ -299,7 +319,7 @@ PIR Sensor OUT ── Arduino D2
 
 ### IR Receiver Circuit
 
-```
+```text
 Buck Converter 5V Output (+) ── IR Receiver VCC
 IR Receiver GND ── GND
 IR Receiver OUT ── Arduino D4
@@ -307,7 +327,7 @@ IR Receiver OUT ── Arduino D4
 
 ### Complete Wiring Diagram
 
-```
+```text
 12V Power Supply
     │
     ├── Buck Converter (12V→5V)
@@ -322,6 +342,7 @@ IR Receiver OUT ── Arduino D4
 ```
 
 Ground Connections:
+
 - All GND connections must be connected to a single common ground rail
 - Buck converter output GND connects to Arduino GND
 - All component GND connections connect to this common ground
@@ -369,7 +390,7 @@ The device supports IR remote control using a TSOP1838 receiver and Elegoo-compa
 
 The device operates using a state machine with four distinct states:
 
-```
+```mermaid
 WARMUP → STANDBY → ACTIVE
    ↑         ↑         ↑
    └─────────┴─────────┘
@@ -473,9 +494,10 @@ const int FAN_SPEED_ACTIVATED = 255; // Fan speed when activated (0-255)
 
 // State machine enum (for reference)
 enum DeviceState {
-    WARMUP,   // PIR sensor is warming up
-    STANDBY,  // Ready for motion detection
-    ACTIVE    // Deterrent is active
+    WARMUP,    // PIR sensor is warming up
+    STANDBY,   // Ready for motion detection
+    ACTIVE,    // Deterrent is active
+    INACTIVE   // Device disabled, ignoring PIR input
 };
 ```
 
@@ -487,7 +509,7 @@ Edit `src/PIRSensor.cpp` to customize warm-up time:
 // In constructor - change warm-up duration (default: 45 seconds)
 _warmUpDuration(45000) // 45 seconds in milliseconds
 
-// The PIRSensor class now includes an update() method that should be called
+// The PIRSensor class includes an update() method that should be called
 // in the main loop() for proper state management
 ```
 
@@ -502,13 +524,14 @@ const int BUZZER_PIN = 3;     // Buzzer control pin
 const int LED_RED_PIN = 5;    // RGB LED red pin (PWM)
 const int LED_GREEN_PIN = 6;  // RGB LED green pin (PWM)
 const int LED_BLUE_PIN = 8;   // RGB LED blue pin (Digital only)
+const int IR_RECEIVER_PIN = 4; // IR receiver pin
 ```
 
 ## Hardware Circuit
 
-### Fan Control Circuit (P30N06LE MOSFET)
+### Fan Control Circuit Details (P30N06LE MOSFET)
 
-```
+```text
 Arduino D9 ──┬── 10kΩ Resistor ── GND
             │
             └── P30N06LE Gate
@@ -523,6 +546,7 @@ Arduino D9 ──┬── 10kΩ Resistor ── GND
 ```
 
 Component Details:
+
 - P30N06LE: N-channel MOSFET (30A, 60V)
 - 10kΩ Resistor: Pull-down resistor for gate
 - Fan: 12V or 5V PC fan (4-pin PWM fan supported)
@@ -530,7 +554,7 @@ Component Details:
 
 ### Buzzer Circuit (2N2222 Transistor)
 
-```
+```text
 Arduino D3 ──┬── 1kΩ Resistor ── 2N2222 Base
             │
             └── 2N2222 Emitter ── GND
@@ -543,6 +567,7 @@ Arduino D3 ──┬── 1kΩ Resistor ── 2N2222 Base
 ```
 
 Component Details:
+
 - 2N2222: NPN transistor for current amplification
 - 1kΩ Resistor: Base current limiting resistor
 - Buzzer: 5V or 12V piezo buzzer
@@ -550,7 +575,7 @@ Component Details:
 
 ### RGB LED Circuit (Common Cathode)
 
-```
+```text
 Arduino D5 ── 220Ω Resistor ── LED Red Anode (PWM - variable brightness)
 Arduino D6 ── 220Ω Resistor ── LED Green Anode (PWM - variable brightness)
 Arduino D8 ── 220Ω Resistor ── LED Blue Anode (Digital - on/off only)
@@ -562,6 +587,7 @@ TSOP1838 GND ── GND
 ```
 
 Component Details:
+
 - 220Ω Resistors: Current-limiting resistors (220Ω-330Ω acceptable)
 - RGB LED: Common cathode type (longest pin = cathode)
 - Pin Configuration: Red, Green, Blue anodes + Common cathode
@@ -570,7 +596,7 @@ Component Details:
 
 ### Complete Wiring Diagram
 
-```
+```text
 Arduino Nano
 ┌─────────────────────────────────────────────────────────┐
 │                                                         │
@@ -651,6 +677,7 @@ pio lib install "library_name"
 The project follows object-oriented design principles with proper encapsulation and separation of concerns:
 
 #### Component Classes
+
 - `PIRSensor`: Motion detection interface with built-in warm-up logic and state management
 - `PWMFan`: Fan speed control with PWM support
 - `Buzzer`: Audio output control with non-blocking siren mode
@@ -658,6 +685,7 @@ The project follows object-oriented design principles with proper encapsulation 
 - `IRRemote`: IR remote control interface with debouncing and power toggle support
 
 #### State Management
+
 - `DeviceStateMachine`: Centralized state machine managing device behavior and transitions
   - WARMUP: PIR sensor initialization (45 seconds)
   - STANDBY: Ready for motion detection
@@ -665,6 +693,7 @@ The project follows object-oriented design principles with proper encapsulation 
   - INACTIVE: Device disabled via remote control
 
 #### Main Program Structure
+
 ```cpp
 void loop() {
   // Update all component states
@@ -678,6 +707,7 @@ void loop() {
 ```
 
 #### Design Benefits
+
 - Encapsulation: Each class has clear responsibilities
 - Maintainability: Changes to state logic only affect DeviceStateMachine
 - Testability: Individual classes can be unit tested
@@ -685,6 +715,7 @@ void loop() {
 - No Global State: All state is properly encapsulated
 
 #### Recent Refactoring Improvements (V1.4.2)
+
 - Eliminated Stranded Methods: Moved `checkIRPowerToggle()` to `IRRemote` class
 - State Machine Encapsulation: Created `DeviceStateMachine` class for all state logic
 - Cleaner Main Loop: Simplified main.cpp to focus on orchestration
