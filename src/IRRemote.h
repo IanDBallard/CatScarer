@@ -29,6 +29,9 @@ public:
     // Clears the power toggle flag
     void clearPowerToggle();
     
+    // Checks and clears power toggle in one call (convenience method)
+    bool checkPowerToggle();
+    
     // For testing - simulate power toggle via serial command
     void simulatePowerToggle();
 };

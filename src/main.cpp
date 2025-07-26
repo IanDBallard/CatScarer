@@ -6,6 +6,7 @@
 #include "Buzzer.h"
 #include "RGBLED.h"
 #include "IRRemote.h"
+#include "DeviceStateMachine.h"
 
 // --- Pin Definitions ---
 // Connect PIR Sensor OUT pin to this digital input pin
@@ -32,14 +33,6 @@ const int IR_RECEIVER_PIN = 4; // Using D4 for IR receiver
 const unsigned long ACTIVATION_DURATION_MS = 5000; // How long the fan/buzzer stays on (5 seconds)
 const int FAN_SPEED_ACTIVATED = 255; // Fan speed when activated (0-255, 255 is full speed)
 
-// --- State Machine ---
-enum DeviceState {
-    WARMUP,    // PIR sensor is warming up
-    STANDBY,   // Ready for motion detection
-    ACTIVE,    // Deterrent is active
-    INACTIVE   // Device disabled, ignoring PIR input
-};
-
 // --- Object Instantiation ---
 // Create instances of our component classes
 PIRSensor myPIR(PIR_PIN);
@@ -48,18 +41,9 @@ Buzzer myBuzzer(BUZZER_PIN);
 RGBLED myLED(LED_RED_PIN, LED_GREEN_PIN, LED_BLUE_PIN);
 IRRemote myIRRemote(IR_RECEIVER_PIN);
 
-// --- State Variables ---
-DeviceState currentState = WARMUP;
-unsigned long activationStartTime = 0; // Stores the millis() when activation started
-unsigned long lastFlicker = 0; // For blue LED flickering during warm-up
-bool ledState = false; // For blue LED flickering during warm-up
-
-// --- Function Declarations ---
-void handleWarmupState();
-void handleStandbyState();
-void handleActiveState();
-void handleInactiveState();
-bool checkIRPowerToggle();
+// Create state machine instance
+DeviceStateMachine stateMachine(myPIR, myFan, myBuzzer, myLED, myIRRemote, 
+                                ACTIVATION_DURATION_MS, FAN_SPEED_ACTIVATED);
 
 void setup() {
   // Initialize Serial communication for debugging
@@ -72,6 +56,7 @@ void setup() {
   myBuzzer.begin();
   myLED.begin();
   myIRRemote.begin();
+  stateMachine.begin();
 
   // LED Test - cycle through colors
   Serial.println("Testing LED colors...");
@@ -105,121 +90,7 @@ void loop() {
   myBuzzer.update();
   myIRRemote.update();
   
-  // State machine logic
-  switch (currentState) {
-    case WARMUP:
-      handleWarmupState();
-      break;
-      
-    case STANDBY:
-      handleStandbyState();
-      break;
-      
-    case ACTIVE:
-      handleActiveState();
-      break;
-      
-    case INACTIVE:
-      handleInactiveState();
-      break;
-  }
+  // Update state machine
+  stateMachine.update();
 }
 
-void handleWarmupState() {
-  // Check for IR power toggle (can interrupt warm-up)
-  if (checkIRPowerToggle()) {
-    currentState = INACTIVE;
-    Serial.println("IR Power toggle: Entering inactive mode.");
-    return;
-  }
-  
-  // Flicker blue LED during warm-up
-  if (millis() - lastFlicker >= 500) { // Flicker every 500ms
-    ledState = !ledState;
-    myLED.setColor(0, 0, ledState ? 255 : 0); // Blue on/off
-    lastFlicker = millis();
-  }
-  
-  // Check if warm-up is complete
-  if (!myPIR.isInitializing()) {
-    currentState = STANDBY;
-    Serial.println("Warm-up complete. Entering standby mode.");
-  }
-}
-
-void handleStandbyState() {
-  // Check for IR power toggle
-  if (checkIRPowerToggle()) {
-    currentState = INACTIVE;
-    Serial.println("IR Power toggle: Entering inactive mode.");
-    return;
-  }
-  
-  // Show green LED to indicate ready state
-  myLED.setColor(0, 255, 0); // Green = ready
-  
-  // Check for motion detection
-  if (myPIR.isMotionDetected()) {
-    // Transition to active state
-    currentState = ACTIVE;
-    activationStartTime = millis();
-    
-    Serial.println("Motion detected! Activating deterrent...");
-    Serial.println("Setting LED to RED (255,0,0)");
-    myLED.setColor(255, 0, 0); // Red
-    myFan.turnOn(FAN_SPEED_ACTIVATED);
-    myBuzzer.startSiren();
-  }
-}
-
-void handleActiveState() {
-  // Check for IR power toggle (can interrupt active state)
-  if (checkIRPowerToggle()) {
-    currentState = INACTIVE;
-    Serial.println("IR Power toggle: Entering inactive mode.");
-    // Stop deterrent immediately
-    myFan.turnOff();
-    myBuzzer.stopSiren();
-    return;
-  }
-  
-  // Check if motion is still detected (refresh timer)
-  if (myPIR.isMotionDetected()) {
-    activationStartTime = millis(); // Refresh the timer
-  }
-  
-  // Check if activation duration has expired
-  if (millis() - activationStartTime >= ACTIVATION_DURATION_MS) {
-    // Transition back to standby
-    currentState = STANDBY;
-    
-    Serial.println("Deactivating deterrent...");
-    Serial.println("Setting LED to GREEN (0,255,0)");
-    myLED.setColor(0, 255, 0); // Green
-    myFan.turnOff();
-    myBuzzer.stopSiren();
-  }
-}
-
-void handleInactiveState() {
-  // Check for IR power toggle to exit inactive state
-  if (checkIRPowerToggle()) {
-    currentState = STANDBY;
-    Serial.println("IR Power toggle: Exiting inactive mode, entering standby.");
-    return;
-  }
-  
-  // Show yellow LED to indicate inactive state (red + green)
-  myLED.setColor(255, 255, 0); // Yellow = inactive
-  
-  // In inactive state, ignore all PIR motion detection
-  // No deterrent activation occurs
-}
-
-bool checkIRPowerToggle() {
-  if (myIRRemote.isPowerTogglePressed()) {
-    myIRRemote.clearPowerToggle();
-    return true;
-  }
-  return false;
-}

@@ -57,4 +57,13 @@ void IRRemote::clearPowerToggle() {
 void IRRemote::simulatePowerToggle() {
     powerTogglePressed = true;
     Serial.println("Power toggle simulated!");
+}
+
+// checkPowerToggle() method implementation
+bool IRRemote::checkPowerToggle() {
+    if (isPowerTogglePressed()) {
+        clearPowerToggle();
+        return true;
+    }
+    return false;
 } 
