@@ -12,10 +12,14 @@ CatScarer/
 │   ├── PIRSensor.cpp      # PIR motion sensor class implementation
 │   ├── PWMFan.h           # PWM fan control class header
 │   ├── PWMFan.cpp         # PWM fan control class implementation
-│   ├── Buzzer.h           # Buzzer control class header
-│   ├── Buzzer.cpp         # Buzzer control class implementation
+│   ├── Buzzer.h           # Speaker control class header
+│   ├── Buzzer.cpp         # Speaker control class implementation
 │   ├── RGBLED.h           # RGB LED control class header
-│   └── RGBLED.cpp         # RGB LED control class implementation
+│   ├── RGBLED.cpp         # RGB LED control class implementation
+│   ├── IRRemote.h         # IR remote control class header
+│   ├── IRRemote.cpp       # IR remote control class implementation
+│   ├── DeviceStateMachine.h    # State machine class header
+│   └── DeviceStateMachine.cpp  # State machine class implementation
 ├── Parts/                  # 3D printable enclosure parts
 │   ├── Cat Scarer Body.3mf # Main enclosure body
 │   └── Cat Scarer Lid.3mf  # Enclosure lid/cover
@@ -642,14 +646,50 @@ Or install via command line:
 pio lib install "library_name"
 ```
 
-### Custom Classes
+### Software Architecture
 
-The project uses object-oriented design with encapsulated classes:
+The project follows object-oriented design principles with proper encapsulation and separation of concerns:
 
+#### **Component Classes**
 - `PIRSensor`: Motion detection interface with built-in warm-up logic and state management
-- `PWMFan`: Fan speed control
-- `Buzzer`: Audio output control with siren mode
+- `PWMFan`: Fan speed control with PWM support
+- `Buzzer`: Audio output control with non-blocking siren mode
 - `RGBLED`: Color LED control with PWM support for red/green channels
+- `IRRemote`: IR remote control interface with debouncing and power toggle support
+
+#### **State Management**
+- `DeviceStateMachine`: Centralized state machine managing device behavior and transitions
+  - **WARMUP**: PIR sensor initialization (45 seconds)
+  - **STANDBY**: Ready for motion detection
+  - **ACTIVE**: Deterrents active
+  - **INACTIVE**: Device disabled via remote control
+
+#### **Main Program Structure**
+```cpp
+void loop() {
+  // Update all component states
+  myPIR.update();
+  myBuzzer.update();
+  myIRRemote.update();
+  
+  // Update state machine
+  stateMachine.update();
+}
+```
+
+#### **Design Benefits**
+- **Encapsulation**: Each class has clear responsibilities
+- **Maintainability**: Changes to state logic only affect DeviceStateMachine
+- **Testability**: Individual classes can be unit tested
+- **Reusability**: Methods can be used by other parts of the code
+- **No Global State**: All state is properly encapsulated
+
+#### **Recent Refactoring Improvements (V1.4.2)**
+- **Eliminated Stranded Methods**: Moved `checkIRPowerToggle()` to `IRRemote` class
+- **State Machine Encapsulation**: Created `DeviceStateMachine` class for all state logic
+- **Cleaner Main Loop**: Simplified main.cpp to focus on orchestration
+- **Better Code Organization**: Proper separation of concerns
+- **Enhanced Maintainability**: Easier to modify and extend functionality
 
 ### Project Configuration
 
@@ -673,8 +713,9 @@ Edit `platformio.ini` to customize:
 ### LED Status Indicators
 
 - **Blue flickering**: PIR sensor warming up (45 seconds)
-- **Green solid**: Ready for motion detection
-- **Red solid**: Motion detected, deterrents active
+- **Green solid**: Ready for motion detection (STANDBY state)
+- **Red solid**: Motion detected, deterrents active (ACTIVE state)
+- **Yellow solid**: Device disabled via remote control (INACTIVE state)
 
 ### Debug Output
 
@@ -695,11 +736,14 @@ Testing BLUE pin (D8)...
 ALL LEDS OFF
 PIR sensor warming up...
 Device ready.
+Device State Machine initialized.
 Warm-up complete. Entering standby mode.
 Motion detected! Activating deterrent...
 Setting LED to RED (255,0,0)
 Deactivating deterrent...
 Setting LED to GREEN (0,255,0)
+IR Power toggle: Entering inactive mode.
+IR Power toggle: Exiting inactive mode, entering standby.
 ```
 
 ## Contributing
